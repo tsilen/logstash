@@ -37,7 +37,7 @@ class LogStash::Outputs::Gelf < LogStash::Outputs::Base
 
   # The GELF facility. Dynamic values like %{foo} are permitted here; this
   # is useful if you need to use a value from the event as the facility name.
-  config :facility, :validate => :string, :default => "logstash-gelf"
+  config :facility, :validate => :array, :default => [ "%{facility_label}", "%{facility}", "logstash-gelf" ]
 
   # Ship metadata within event object?
   config :ship_metadata, :validate => :boolean, :default => true
@@ -116,14 +116,30 @@ class LogStash::Outputs::Gelf < LogStash::Outputs::Base
     end
 
     # set facility as defined
-    m["facility"] = event.sprintf(@facility)
+    facility = nil
+    if @facility.is_a?(Array)
+      @facility.each do |value|
+        if value.match(/%/)
+          parsed_value = event.sprintf(value)
+        else
+          parsed_value = value
+        end
+        if parsed_value and parsed_value != value
+          facility = parsed_value
+          break
+        end
+      end
+    else
+      facility = @facility.to_s
+    end
+    m["facility"] = event.sprintf(facility)
 
     # Probe severity array levels
     level = nil
     if @level.is_a?(Array)
       @level.each do |value|
         parsed_value = event.sprintf(value)
-        if parsed_value
+        if parsed_value and parsed_value != value
           level = parsed_value
           break
         end
@@ -131,7 +147,7 @@ class LogStash::Outputs::Gelf < LogStash::Outputs::Base
     else
       level = event.sprintf(@level.to_s)
     end
-    m["level"] = (@level_map[level.downcase] || level).to_i
+    m["level"] = (@level_map[level.to_s.downcase] || level).to_i
 
     @logger.debug(["Sending GELF event", m])
     begin
