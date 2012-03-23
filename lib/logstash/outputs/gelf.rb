@@ -63,6 +63,9 @@ class LogStash::Outputs::Gelf < LogStash::Outputs::Base
     # shipped
     @gelf.level = 0
 
+    # Workaround gelf issue, we should use direct mapping
+    @gelf.level_mapping = { 0 => 0, 1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5, 6 => 6, 7 => 7 }
+
     @level_map = {
       "debug" => 7, "d" => 7,
       "info" => 6, "i" => 6,
