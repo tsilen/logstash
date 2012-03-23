@@ -3,7 +3,7 @@ require "logstash/time"
 require "logstash/namespace"
 require "uri"
 require "time"
-
+require "date"
 # General event type. 
 # Basically a light wrapper on top of a hash.
 #
@@ -12,12 +12,7 @@ require "time"
 class LogStash::Event
   public
   def initialize(data=Hash.new)
-    if RUBY_ENGINE == "jruby"
-      @@date_parser ||= Java::org.joda.time.format.ISODateTimeFormat.dateTimeParser.withOffsetParsed
-    else
-      # TODO(sissel): LOGSTASH-217
-      @@date_parser ||= nil
-    end
+    @@date_parser ||= DateTime
 
     @cancelled = false
     @data = {
@@ -69,13 +64,7 @@ class LogStash::Event
 
   public
   def unix_timestamp
-    if RUBY_ENGINE != "jruby"
-      # This is really slow. See LOGSTASH-217
-      return Time.parse(timestamp).to_f
-    else
-      time = @@date_parser.parseDateTime(timestamp)
-      return time.getMillis.to_f / 1000
-    end
+      return DateTime.parse(timestamp.to_s).to_time.to_f
   end
 
   public
@@ -199,23 +188,15 @@ class LogStash::Event
 
       if key == "+%s"
         # Got %{+%s}, support for unix epoch time
-        if RUBY_ENGINE != "jruby"
-          # TODO(sissel): LOGSTASH-217
-          raise Exception.new("LogStash::Event#sprintf('+%s') is not " \
-                              "supported yet in this version of ruby")
-        end
-        datetime = @@date_parser.parseDateTime(self.timestamp)
-        (datetime.getMillis / 1000).to_i
+        datetime = @@date_parser.parse(self.timestamp).to_time.to_i
+        #(datetime.getMillis / 1000).to_i
       elsif key[0,1] == "+"
         # We got a %{+TIMEFORMAT} so use joda to format it.
-        if RUBY_ENGINE != "jruby"
-          # TODO(sissel): LOGSTASH-217
-          raise Exception.new("LogStash::Event#sprintf('+dateformat') is not " \
-                              "supported yet in this version of ruby")
-        end
-        datetime = @@date_parser.parseDateTime(self.timestamp)
+        datetime = @@date_parser.parse(self.timestamp)
+        #datetime = @@date_parser.parseDateTime(self.timestamp)
         format = key[1 .. -1]
-        datetime.toString(format) # return requested time format
+        #datetime.toString(format) # return requested time format
+        datetime.strftime(format)
       else 
         # Use an event field.
         value = self[key]

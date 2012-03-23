@@ -60,7 +60,7 @@ class LogStash::Inputs::Syslog < LogStash::Inputs::Base
 
     @date_filter = LogStash::Filters::Date.new({
       "type"          => [@config["type"]],
-      "timestamp"     => ["MMM  d HH:mm:ss", "MMM dd HH:mm:ss"],
+      "timestamp"     => ["%b %e %H:%M:%S", "%b %d %H:%M:%S"],
       "timestamp8601" => ["ISO8601"],
     })
 
